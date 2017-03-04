@@ -1,0 +1,6 @@
+#!/usr/bin/execlineb -P
+
+# Option -f makes crond logging to STDERR
+# Because of ./log service that monitors STDOUT, we're redirecting STDERR to STDOUT
+fdmove -c 2 1
+crond -f -d 8

@@ -1,0 +1,7 @@
+#!/usr/bin/execlineb -P
+
+with-contenv
+import -u BACKEND_PORT
+s6-setuidgid httpd
+fdmove -c 2 1
+httpd -f -c /etc/httpd/httpd.conf -p ${BACKEND_PORT} -h /www

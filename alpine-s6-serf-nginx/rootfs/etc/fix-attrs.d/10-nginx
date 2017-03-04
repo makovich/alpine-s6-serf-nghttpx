@@ -1,0 +1,3 @@
+/var/log/nginx false nobody,32768:32768 0755 2700
+/etc/nginx false nginx 0400 0500
+/www true nginx 0400 2500

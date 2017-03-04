@@ -1,0 +1,52 @@
+#!/usr/bin/execlineb
+
+multisubstitute
+{
+  define LOG_FIFO "/var/run/s6/acmesh-log-fifo"
+  import ACME_SH_HOME_DIR
+  import ACME_SH_CERT_DIR
+  import ACME_SH_HTTP_PORT
+  importas SCRIPT_NAME 0
+  importas -D "" DOMAIN 1
+}
+
+ifelse { s6-test -z ${DOMAIN} }
+{
+  s6-echo "[le-revoke] No domain provided. Usage: ${SCRIPT_NAME} domain.tld [--staging | ...]"
+}
+
+if { s6-echo "[le-revoke] Revoking certificate for domain ${DOMAIN}" }
+
+shift
+elgetpositionals
+
+foreground
+{
+  s6-setuidgid acmesh
+
+  acme.sh --home ${ACME_SH_HOME_DIR}
+          --certhome ${ACME_SH_CERT_DIR}
+          --revoke
+          --domain ${DOMAIN}
+#          --debug
+#          --log-level 1
+          --log ${LOG_FIFO}
+          ${@}
+}
+
+import -u ?
+if { s6-echo "[le-revoke] acme.sh exited ${?}." }
+
+ifelse { s6-test ${?} -eq 0 }
+{
+  if { s6-echo "[le-revoke] Deploying certificates..." }
+  foreground { le-deploy }
+
+  import -u ?
+  if { s6-echo "[le-revoke] deploy exited ${?}." }
+
+  exit 0
+}
+
+if { s6-echo "[le-revoke] Deploy has not been triggered." }
+exit 0

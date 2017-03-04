@@ -1,0 +1,8 @@
+#!/usr/bin/execlineb -P
+
+# 1) Exec into `le-renewall` with container environment
+# 2) crond writes its own logs to STDERR so redirect all `le-renewall`'s STDOUT to STDERR
+# 3) `le-renewall` STDERR already bound to crond's STDERR
+# 4) Remove `--staging` from parameters list in your production environment
+pipeline { s6-echo "12 3 * * * exec /usr/bin/with-contenv fdmove -c 1 2 le-renewall --staging" }
+crontab -

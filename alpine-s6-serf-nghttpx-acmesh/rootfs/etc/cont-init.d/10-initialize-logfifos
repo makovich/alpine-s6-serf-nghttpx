@@ -1,0 +1,4 @@
+#!/usr/bin/execlineb -P
+
+if { logutil-newfifo -o acmesh /var/run/s6/acmesh-log-fifo }
+if { logutil-newfifo -o nghttpx /var/run/s6/nghttpx-access-log-fifo }

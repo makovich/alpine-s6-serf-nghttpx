@@ -1,0 +1,14 @@
+#!/usr/bin/execlineb -P
+
+with-contenv
+if { s6-mkdir -pm 0755 /etc/ssl/le }
+if { s6-envuidgid nghttpx s6-chown -U /etc/ssl/le }
+
+# Since nghttpx service is not in place yet, s6-svc will return 111.
+foreground { le-deploy }
+import -u ?
+ifelse { s6-test ${?} -eq 111 }
+{
+  exit 0
+}
+exit ${?}

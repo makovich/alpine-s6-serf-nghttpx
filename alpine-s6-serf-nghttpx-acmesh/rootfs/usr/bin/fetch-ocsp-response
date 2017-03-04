@@ -1,0 +1,66 @@
+#!/usr/bin/execlineb -S0
+
+define CERT ${1}
+define ISSUER ${BASE_DIR}/ca.pem
+define RESPONSE ${BASE_DIR}/resp.der
+
+# Does certificate file exist?
+ifelse { s6-test ! -f ${CERT} }
+{
+  foreground { fdmove 1 2 s6-echo "No certificate file provided." }
+  exit 255
+}
+
+# Get the certificate directory...
+pipeline { s6-dirname ${CERT} }
+withstdinas -n BASE_DIR
+import -u BASE_DIR
+
+# ...to check the presense of CA certifiicate in the same directory.
+ifelse { s6-test ! -f ${ISSUER} }
+{
+  foreground { fdmove 1 2 s6-echo "CA certificate file not found (ca.pem)." }
+  exit 255
+}
+
+# Extract OCSP URI from provided certificate...
+pipeline { openssl x509 -noout -ocsp_uri -in ${CERT} }
+pipeline { s6-cat }
+withstdinas -n -D "" OCSP_URI
+import -u OCSP_URI
+ifelse { s6-test -z ${OCSP_URI} }
+{
+  foreground { fdmove 1 2 s6-echo "No OCSP URI was found in provided certificate file." }
+  exit 255
+}
+
+# ...then get part of it for 'Host' HTTP header.
+pipeline { s6-echo ${OCSP_URI} }
+pipeline { s6-cut -d/ -f3 }
+withstdinas -n OCSP_HOST
+import -u OCSP_HOST
+
+# Fetch OCSP response
+foreground
+{
+  # Redirect STDOUT to STDERR 
+  fdmove 1 2
+  openssl ocsp
+    -issuer ${ISSUER}
+    -cert ${CERT}
+    -url ${OCSP_URI}
+    -header Host ${OCSP_HOST}
+    -respout ${RESPONSE}
+}
+
+# Check OpenSSL exit code
+import -u ?
+ifelse { s6-test ${?} -ne 0 }
+{
+  foreground { fdmove 1 2 s6-echo "openssl exited ${?}." }
+  exit 255
+}
+
+# Flush OCSP response to STDOUT
+redirfd -r 0 ${RESPONSE}
+s6-cat

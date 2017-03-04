@@ -1,0 +1,12 @@
+#!/usr/bin/execlineb -P
+
+define SSL_DEFAULTS "/etc/nghttpx/ssl-defaults"
+
+if { s6-mkdir -p ${SSL_DEFAULTS} }
+if -t { s6-test ! -f ${SSL_DEFAULTS}/dhparam.pem }
+if
+{
+  export RANDFILE .rnd
+  openssl dhparam -out ${SSL_DEFAULTS}/dhparam.pem 2048
+}
+if { s6-envuidgid nghttpx s6-chown -U ${SSL_DEFAULTS}/dhparam.pem }

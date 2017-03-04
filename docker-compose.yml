@@ -1,0 +1,88 @@
+version: "2.1"
+
+networks:
+  clstrnwrk:
+    driver: bridge
+
+volumes:
+  letsencrypt:
+#    external:
+#      name: issued_certs_stored_in_host
+  frontend_logs:
+  httpd_logs:
+  nginx_logs:
+
+services:
+
+  # These are the root images for all the services
+  #
+  # Overridden `entrypoint` and `depends_on` entries allows to build dependencies chain with simple `docker-compose up`
+
+  alpine-s6:
+    build: ./alpine-s6
+    image: makovich/alpine-s6:0.5
+    entrypoint: /bin/true
+
+  alpine-s6-serf:
+    build: ./alpine-s6-serf
+    image: makovich/alpine-s6-serf:0.5
+    entrypoint: /bin/true
+    depends_on:
+      - alpine-s6
+
+  ############################################
+
+  frontend:
+    container_name: ${FRONTEND_NAME:-fe.serf}
+    build: ./alpine-s6-serf-nghttpx-acmesh
+    depends_on:
+      - alpine-s6-serf
+
+    volumes:
+      - letsencrypt:/var/acme.sh
+      - frontend_logs:/var/log
+
+    networks:
+      - clstrnwrk
+
+    ports:
+      - "80:80"
+      - "443:443"
+      - "3000:3000"
+
+    environment:
+      S6_LOGGING: ${S6_LOGGING:-1}
+
+    restart: always
+
+
+  httpd:
+    build: ./alpine-s6-serf-httpd
+    depends_on:
+      - alpine-s6-serf
+
+    volumes:
+      - httpd_logs:/var/log
+
+    networks:
+      - clstrnwrk
+
+    environment:
+      S6_LOGGING: ${S6_LOGGING:-1}
+      FRONTEND_NAME: ${FRONTEND_NAME:-fe.serf}
+
+
+  nginx:
+    build: ./alpine-s6-serf-nginx
+    depends_on:
+      - alpine-s6-serf
+
+    volumes:
+      - nginx_logs:/var/log
+
+    networks:
+      - clstrnwrk
+
+    environment:
+      S6_LOGGING: ${S6_LOGGING:-1}
+      FRONTEND_NAME: ${FRONTEND_NAME:-fe.serf}

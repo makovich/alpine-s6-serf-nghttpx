@@ -1,0 +1,44 @@
+#!/usr/bin/execlineb
+
+define NGHTTPX_BACKENDS_CONF "/etc/nghttpx/backends.conf"
+
+import -i SERF_EVENT
+
+ifelse
+{
+  s6-test ${SERF_EVENT} = "member-join"
+       -o ${SERF_EVENT} = "member-leave"
+       -o ${SERF_EVENT} = "member-failed"
+       -o ${SERF_EVENT} = "member-update"
+}
+{
+  if
+  {
+    redirfd -w 1 ${NGHTTPX_BACKENDS_CONF}
+  
+    forbacktickx -d"\n" ENTRY { serf members -tag role=backend -status=alive }
+    import -u ENTRY
+    multidefine -Cd" " ${ENTRY} { HOSTNAME HOST_IP HOST_STATUS HOST_TAGS }
+  
+    define -sd"," ENV_TAGS ${HOST_TAGS}
+  
+    s6-env -i ${ENV_TAGS}
+    multisubstitute
+    {
+      import -u BE_IP
+      import -u BE_PORT
+      import -u BE_PATTERN
+      import -u BE_PARAMS
+    }
+    s6-echo "backend=${BE_IP},${BE_PORT};${BE_PATTERN};${BE_PARAMS}"
+  } 
+
+  if
+  {
+    s6-svc -h /var/run/s6/services/nghttpx
+  }
+
+  s6-echo "backends.conf updated."
+}
+
+s6-echo "event not supported."

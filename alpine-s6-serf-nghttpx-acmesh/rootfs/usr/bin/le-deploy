@@ -1,0 +1,79 @@
+#!/usr/bin/execlineb -P
+
+importas ACMESH_DIR ACME_SH_CERT_DIR
+define DEPLOY_DIR "/etc/ssl/le"
+
+define NGHTTPX_CERTS_CONF "/etc/nghttpx/certs.conf"
+
+define SRC_CWD "${ACMESH_DIR}/${DOMAIN}"
+define DEST_CWD "${DEPLOY_DIR}/${DOMAIN}"
+
+define PK_SRC  "${SRC_CWD}/${DOMAIN}.key"
+define CER_SRC "${SRC_CWD}/${DOMAIN}.cer"
+define CA_SRC  "${SRC_CWD}/ca.cer"
+
+define PK_DEST  "${DEST_CWD}/privkey.pem"
+define CER_DEST "${DEST_CWD}/cert.pem"
+define CA_DEST  "${DEST_CWD}/ca.pem"
+
+
+ifelse { s6-test ! -d ${ACMESH_DIR} }
+{
+  s6-echo "[deploy] Skipped. Certificates directory not found."
+}
+
+if { s6-echo "[deploy] Removing ${NGHTTPX_CERTS_CONF}" }
+if { s6-rmrf ${NGHTTPX_CERTS_CONF} }
+if { s6-touch ${NGHTTPX_CERTS_CONF} }
+
+if { s6-echo "[deploy] Copying certificates..." }
+if
+{
+  forbacktickx -0 DOMAIN { s6-ls -0 ${ACMESH_DIR} }
+  import -u DOMAIN
+
+  # DOMAIN could be a regular file so doublecheck this.
+  if { s6-test -d ${ACMESH_DIR}/${DOMAIN} }
+  ifelse { s6-test ! -f ${CER_SRC} -o ! -f ${PK_SRC} -o ! -f ${CA_SRC} }    
+  {
+    s6-echo "[deploy] Skipping ${SRC_CWD} (key/cert file(s) not found)."
+  }
+
+  # Copy files from ACME.SH directory to the well known destination
+  if -X
+  {
+    # Recreate subdirectory for DOMAIN
+    if { s6-rmrf ${DEST_CWD} }
+    if { s6-setuidgid nghttpx s6-mkdir -pm 0755 ${DEST_CWD} }
+
+    # Prepare a loop for 'needed to deploy' files...
+    forbacktickx -0 -d ";" TUPLE { s6-echo -n "PK:${PK_SRC}:${PK_DEST}:0644;CER:${CER_SRC}:${CER_DEST}:0644;CA:${CA_SRC}:${CA_DEST}:0644" }
+    import -u TUPLE
+    multidefine -d ":" ${TUPLE} { TYPE SRC DEST MODE }
+
+    # ...and run copying...
+    if
+    {
+      if { s6-echo "[deploy] (${TYPE}) ${SRC} -> ${DEST}" }
+      redirfd -x 1 ${DEST}
+      redirfd -r 0 ${SRC}
+      s6-cat
+    }
+
+    # ...and update permissions.
+    if { s6-envuidgid nghttpx s6-chown -U ${DEST} }
+    s6-chmod ${MODE} ${DEST}
+  }
+
+  # If we've got here, we can add --subsert option to nghttpx
+  if { s6-echo "[deploy] (CONFIG) adding ${DOMAIN} key/cert" }
+  redirfd -a 1 ${NGHTTPX_CERTS_CONF}
+  s6-echo "subcert=${PK_DEST}:${CER_DEST}"
+}
+
+if { s6-echo "[deploy] Reloading nghttpx..." }
+
+# From docs:
+# It exits 111 if it cannot send a command,
+# or 100 if no s6-supervise process is running on servicedir.
+s6-svc -h /var/run/s6/services/nghttpx

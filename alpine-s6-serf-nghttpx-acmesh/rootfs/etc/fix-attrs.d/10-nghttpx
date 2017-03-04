@@ -1,0 +1,3 @@
+/etc/nghttpx/ssl-defaults true nghttpx 0600 0500
+/etc/ssl/le true nghttpx 0400 0500
+/usr/bin/fetch-ocsp-response true nghttpx 0700 0700

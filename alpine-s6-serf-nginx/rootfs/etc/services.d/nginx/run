@@ -1,0 +1,5 @@
+#!/usr/bin/execlineb -P
+
+s6-setuidgid nginx
+fdmove -c 2 1
+nginx -c /etc/nginx/nginx.conf

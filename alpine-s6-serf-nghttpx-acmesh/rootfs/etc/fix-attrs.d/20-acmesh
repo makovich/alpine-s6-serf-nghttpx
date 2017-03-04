@@ -1,0 +1,6 @@
+/var/acme.sh true acmesh 0600 0700
+/usr/bin/acme.sh true acmesh 0500 0700
+/usr/bin/le-issue true acmesh 0500 0700
+/usr/bin/le-revoke true acmesh 0500 0700
+/usr/bin/le-renewall true acmesh 0500 0700
+/usr/bin/le-deploy true acmesh 0500 0700

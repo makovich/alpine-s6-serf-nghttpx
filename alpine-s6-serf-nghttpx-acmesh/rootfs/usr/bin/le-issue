@@ -1,0 +1,57 @@
+#!/usr/bin/execlineb
+
+multisubstitute
+{
+  define LOG_FIFO "/var/run/s6/acmesh-log-fifo"
+  import ACME_SH_HOME_DIR
+  import ACME_SH_CERT_DIR
+  import ACME_SH_HTTP_PORT
+  importas SCRIPT_NAME 0
+  importas -D "" DOMAIN 1
+}
+
+ifelse { s6-test -z ${DOMAIN} }
+{
+  s6-echo "[le-issue] No domain provided. Usage: ${SCRIPT_NAME} domain.tld [--staging | ...]"
+}
+
+if { s6-echo "[le-issue] Issuing certificate for domain ${DOMAIN}" }
+
+shift
+elgetpositionals
+
+foreground
+{
+  s6-setuidgid acmesh
+
+  acme.sh --home ${ACME_SH_HOME_DIR}
+          --certhome ${ACME_SH_CERT_DIR}
+          --issue
+          --domain ${DOMAIN}
+          --standalone
+          --httpport ${ACME_SH_HTTP_PORT}
+          --ocsp
+          --accountkeylength 4096
+#          --debug
+#          --staging
+#          --log-level 1
+          --log ${LOG_FIFO}
+          ${@}
+}
+
+import -u ?
+if { s6-echo "[le-issue] acme.sh exited ${?}." }
+
+ifelse { s6-test ${?} -eq 0 }
+{
+  if { s6-echo "[le-issue] Deploying certificates..." }
+  foreground { le-deploy }
+
+  import -u ?
+  if { s6-echo "[le-issue] deploy exited ${?}." }
+
+  exit 0
+}
+
+if { s6-echo "[le-issue] Deploy has not been triggered." }
+exit 0

@@ -1,0 +1,4 @@
+#!/usr/bin/execlineb -P
+
+# Let serf errors to be uncaught and collected into /var/log/s6-uncaught-logs.
+serf agent -config-dir=/etc/serf

@@ -1,0 +1,30 @@
+#!/usr/bin/execlineb -P
+
+with-contenv
+backtick -n SERF_CONFIG
+{
+  redirfd -r 0 /etc/services.d/serf/config.json.tpl
+  s6-cat
+}
+import -i HOSTNAME
+backtick -n HOST_IP
+{
+  redirfd -r 0 /etc/hosts
+  pipeline { s6-grep ${HOSTNAME} } s6-cut -f1
+}
+import -u SERF_CONFIG
+multisubstitute
+{
+  import -i HOSTNAME
+  import -i HOST_IP
+  import -i FRONTEND_NAME
+  import -i BACKEND_PORT
+  import -i BACKEND_PATTERN
+  import -D "" BACKEND_PARAMS
+}
+if
+{
+  s6-echo "Serf configuration:\n${SERF_CONFIG}"
+}
+redirfd -w 1 /etc/serf/config.json
+s6-echo "${SERF_CONFIG}"

@@ -1,0 +1,5 @@
+#!/usr/bin/execlineb -P
+
+# nghttpx logs to STDERR. Redirect it to STDOUT so ./log service can track it.
+fdmove -c 2 1
+nghttpx --conf=/etc/nghttpx/nghttpx.conf

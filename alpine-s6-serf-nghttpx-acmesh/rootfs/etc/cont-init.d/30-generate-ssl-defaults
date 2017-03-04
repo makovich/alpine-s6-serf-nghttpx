@@ -1,0 +1,22 @@
+#!/usr/bin/execlineb -P
+
+define SSL_DEFAULTS "/etc/nghttpx/ssl-defaults"
+
+if { s6-mkdir -p ${SSL_DEFAULTS} }
+if -t { s6-test ! -f ${SSL_DEFAULTS}/privkey.pem -o ! -f ${SSL_DEFAULTS}/cert.pem }
+
+if
+{
+  openssl genrsa -out ${SSL_DEFAULTS}/privkey.pem 2048
+}
+
+if
+{
+  openssl req -batch -new -x509 -days 7200 -subj "/CN=*.28064212.date" -key ${SSL_DEFAULTS}/privkey.pem -out ${SSL_DEFAULTS}/cert.pem
+}
+
+if { s6-envuidgid nghttpx s6-chown -U ${SSL_DEFAULTS}/privkey.pem }
+if { s6-chmod 0400 ${SSL_DEFAULTS}/privkey.pem }
+
+if { s6-envuidgid nghttpx s6-chown -U ${SSL_DEFAULTS}/cert.pem }
+if { s6-chmod 0400 ${SSL_DEFAULTS}/cert.pem }

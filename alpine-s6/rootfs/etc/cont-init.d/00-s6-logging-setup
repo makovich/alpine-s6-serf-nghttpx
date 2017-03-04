@@ -1,0 +1,35 @@
+#!/usr/bin/execlineb -P
+
+backtick -D 0 -n S6_LOGGING { printcontenv S6_LOGGING }
+import -u S6_LOGGING 
+ifelse { s6-test ${S6_LOGGING} -ne 0 }
+{
+  s6-echo "Logging to /var/log"
+}
+
+if { s6-echo "Logging to STDOUT" }
+
+define SERVICES_DIR "/var/run/s6/etc/services.d"
+
+forbacktickx -0 ENTRY { s6-ls -0 ${SERVICES_DIR} }
+import -u ENTRY
+
+# Is entry a directory?
+if { s6-test -d ${SERVICES_DIR}/${ENTRY} }
+
+# Remove any possible ./log services
+ifelse { s6-test -d ${SERVICES_DIR}/${ENTRY}/log }
+{
+  if { s6-echo "Removing service directory ${SERVICES_DIR}/${ENTRY}/log" }
+  s6-rmrf ${SERVICES_DIR}/${ENTRY}/log
+}
+
+# Any entry ending with `-log` is a log service defenition
+pipeline { s6-echo ${ENTRY} }
+pipeline { s6-grep ".*-log$" }
+withstdinas -n LOG_SERVICE_ENTRY
+import -u LOG_SERVICE_ENTRY
+if { s6-test ${LOG_SERVICE_ENTRY} }
+
+if { s6-echo "Removing service directory ${SERVICES_DIR}/${LOG_SERVICE_ENTRY}" }
+s6-rmrf ${SERVICES_DIR}/${LOG_SERVICE_ENTRY}

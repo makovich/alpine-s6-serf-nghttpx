@@ -1,0 +1,3 @@
+/var/log/httpd false nobody,32768:32768 0755 2700
+/etc/httpd false httpd 0400 0500
+/www true httpd 0400 2500

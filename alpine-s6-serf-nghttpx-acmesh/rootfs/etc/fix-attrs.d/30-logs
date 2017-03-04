@@ -1,0 +1,4 @@
+/var/log/acmesh false nobody,32768:32768 0755 2700
+/var/log/crond-renewall false nobody,32768:32768 0755 2700
+/var/log/nghttpx-access false nobody,32768:32768 0755 2700
+/var/log/nghttpx-error false nobody,32768:32768 0755 2700

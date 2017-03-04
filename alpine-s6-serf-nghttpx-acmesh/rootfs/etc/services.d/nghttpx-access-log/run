@@ -1,0 +1,3 @@
+#!/usr/bin/execlineb -P
+
+logutil-service -f /var/run/s6/nghttpx-access-log-fifo /var/log/nghttpx-access
